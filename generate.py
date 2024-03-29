@@ -1,81 +1,131 @@
 import random
-import sympy
 import re
-from functools import lru_cache
-expPool = [0, 0, 0, 1, 1, 1, 2, 3, 4, 5, 6, 7, 7, 7, 8, 8, 8]
-numPool = [0, 0, 1, 1, 2, 3, 114514, 2147483647, 2147483648, 2147483649, 4294967296, 998244353]
 
-def genDate(deepNum):
-    string = getExpr(deepNum)
-    if (len(string) > 1000):
-        return genDate(deepNum)
-    return string
+expPool = [0, 0, 0, 0, 1, 2, 2, 1, 3, 3]
+numPool = [0, 0, 0, 1, 1, 1, 2, 3, 114514, 2147483647, 2147483648, 2147483649, 4294967296, 998244353]
+funPool = ["f", "g", "h"]
+arguPool = ["x", "y", "z"]
 
+namePool = []
+arguNumDict = {}
+arguListDict = {}
+funNum = 0
 
 def remove_leading_zeros(text):
     return re.sub(r'\b0+(\d+)', r'\1', text)
 
-@lru_cache(maxsize=None)
-def calculate(string):
-    return sympy.sympify(sympy.expand(remove_leading_zeros(string.replace('^','**').replace(" ", "").replace("\t","")), hints=pow))
+def preTreatment(string):
+    return remove_leading_zeros(string.replace('^','**').replace(" ", "").replace("\t",""))
+
+def genDeclare():
+    global funNum
+    global arguNumDict
+    global arguListDict
+    global namePool
+
+    funNum = 0
+    arguNumDict.clear()
+    arguListDict.clear()
+    namePool.clear()
+
+    deepNum = random.randint(0, 1)
+    string = ""
+    num = random.randint(0, 3)
+    funNum = num
+    string = string + str(num) + "\n"
+    names = random.sample(funPool, num)
+    namePool.extend(names)
+    for i in range(num):
+        name = random.choice(names)
+        names.remove(name)
+        arguNum = random.randint(1, 3)
+        arguList = random.sample(arguPool, arguNum)
+        arguNumDict[name] = arguNum
+        arguListDict[name] = arguList
+
+        string = string + name + '(' + ','.join(arguList) + ")="
+        string = string + getExpr(deepNum, True, name) + "\n"
+
+    return string
+
+def genDate(deepNum):
+    string = getExpr(deepNum)
+    if (len(string) > 200):
+        return genDate(deepNum)
+    return string
 
 
-def getExpr(deepNum):
-    string, ans = getTerm(deepNum)
-    termNum = random.randint(1, 5)
-    r = random.uniform(0, 1)
+def getExpr(deepNum, gen=False, name='bug'):
+    string = ""
+    termNum = random.randint(1,3)
+    r = random.uniform(0,1)
     if (r < 0.35):
-        string = getWhite() + "+" + getWhite() + string
+        string = string + getWhite() + "+" + getWhite() + getTerm(deepNum, gen, name)
     elif (r < 0.7):
-        string = getWhite() + "-" + getWhite() + string
-        ans = calculate("-(" + str(ans) + ")")
+        string = string + getWhite() + "-" + getWhite() + getTerm(deepNum, gen, name)
     else:
-        string = getWhite() + string
+        string = string + getWhite() + getTerm(deepNum, gen, name)
 
     for i in range(termNum - 1):
-        res = getTerm(deepNum)
         if (random.randint(0, 1)):
-            string = string + getWhite() + "+" + getWhite() + res[0]
-            ans = calculate(str(ans) + "+" + str(res[1]))
+            string = string + getWhite() + "+" + getWhite() + getTerm(deepNum, gen, name)
         else:
-            string = string + getWhite() + "-" + getWhite() + res[0]
-            ans = calculate(str(ans) + "-(" + str(res[1]) + ")")
-    return string, ans
+            string = string + getWhite() + "-" + getWhite() + getTerm(deepNum, gen, name)
+
+    return string
 
 
-def getTerm(deepNum):
-    string, ans = getFactor(deepNum)
-    factorNum = random.randint(1, 5)
+def getTerm(deepNum, gen=False, name='bug'):
+    string = ""
+    factorNum = random.randint(1, 3)
     r = random.uniform(0, 1)
     if (r < 0.35):
-        string = getWhite() + "+" + getWhite() + string
+        string = string + getWhite() + "+" + getWhite() + getFactor(deepNum, gen, name)
     elif (r < 0.7):
-        string = getWhite() + "-" + getWhite() + string
-        ans = calculate("-(" + str(ans) + ")")
+        string = string + getWhite() + "-" + getWhite() + getFactor(deepNum, gen, name)
     else:
-        string = getWhite() + string
-    
+        string = string + getWhite() + getFactor(deepNum, gen, name)
+
     for i in range(factorNum - 1):
-        res = getFactor(deepNum)
-        string = string + getWhite() + "*" + getWhite() + res[0]
-        ans = calculate("(" + str(ans) + ")*(" + str(res[1]) + ")")
-    return string, ans
+         string = string + getWhite() + "*" + getWhite() + getFactor(deepNum, gen, name)
+
+    return string
 
 
-def getFactor(deepNum):
-    r = random.uniform(0,1)
-    if (deepNum > 0):
-        if (r < 0.45):
-            return getConFactor()
-        elif (r < 0.9):
-            return getPowFactor()
+def getFactor(deepNum, gen=False, name='bug'):
+    r = random.uniform(0, 1)
+    if (gen == False):
+        if (deepNum > 0):
+            if (r<0.4 and funNum > 0):
+                return getFunFactor(deepNum - 1)
+            elif (r < 0.5):
+                return getConFactor()
+            elif (r < 0.6):
+                return getPowFactor()
+            elif (r < 0.8):
+                return getExpFactor(deepNum - 1)
+            else:
+                return getExprFactor(deepNum - 1)
         else:
-            return getExprFactor(deepNum - 1)
+            if (r < 0.5):
+                return getConFactor()
+            else:
+                return getPowFactor()
     else:
-        if (r < 0.5):
-            return getConFactor()
+        if (deepNum > 0):
+            if (r < 0.3):
+                return getConFactor()
+            elif (r < 0.6):
+                return getPowFactor(gen, name)
+            elif (r < 0.9):
+                return getExpFactor(deepNum - 1, gen, name)
+            else:
+                return getExprFactor(deepNum - 1, gen, name)
         else:
-            return getPowFactor()
+            if (r < 0.5):
+                return getConFactor()
+            else:
+                return getPowFactor(gen, name)
 
 
 def getConFactor():
@@ -97,29 +147,48 @@ def getConFactor():
     else:
         string = string + getWhite() + getZero() + str(random.randint(0, 100))
 
-    return string, calculate(string)
+    return string
 
 
-def getPowFactor():
+def getPowFactor(gen=False, name='bug'):
     string = ""
-    string = string + getWhite() + "x" + getWhite() + "^"
+    if (not gen):
+        string = string + getWhite() + "x" + getWhite() + "^"
+    else:
+        arguList = arguListDict[name]
+        var = random.choice(arguList)
+        string = string + getWhite() + var + getWhite() + "^"
 
     if (random.uniform(0,1) < 0.5):
         string = string + getWhite() + "+"
     string = string + getWhite() + str(random.choice(expPool))
 
-    return string, calculate(string)
+    return string
 
 
-def getExprFactor(deepNum):
-    res = getExpr(deepNum)
+def getExprFactor(deepNum, gen=False, name='bug'):
+    # print(deepNum)
     if (random.uniform(0,1) < 0.3):
-        return "(" + res[0] + ")", res[1]
-    exp = str(random.choice(expPool))
-    string = getWhite() + "(" + getWhite() + res[0] + getWhite() + ")" + getWhite() + "^" + exp
-    ans = calculate("(" + str(res[1]) + ")^" + exp)
-    return string, ans
+        return "(" + getExpr(deepNum, gen, name) + ")"
+    string = getWhite() + "(" + getWhite() + getExpr(deepNum, gen, name) + getWhite() + ")" + getWhite() + "^" + str(random.choice(expPool))
+    return string
 
+
+def getExpFactor(deepNum, gen=False, name='bug'):
+    string = "exp("
+    string = string + getFactor(deepNum, gen, name)
+    string = string + ")"
+    return string
+
+def getFunFactor(deepNum):
+    global namePool
+    global arguNumDict
+    name = random.choice(namePool)
+    arguNum = arguNumDict[name]
+    arguR = []
+    for i in range(arguNum):
+        arguR.append(getFactor(deepNum))
+    return name + '(' + ','.join(arguR) + ')'
 
 def getWhite():
     string = ""
@@ -140,7 +209,6 @@ def getWhite():
                 string = string + '\t'
 
     return string
-
 
 def getZero():
     string = ""

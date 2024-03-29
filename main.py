@@ -6,30 +6,35 @@ import os
 from colorama import Fore, Back, Style
 import sympy
 import datetime
-from generate import genDate
-from generate import genDeclare
 from generate import preTreatment
 from run_java import execute_java
+from run_java import execute_py
+
 import func_timeout
 from func_timeout import func_set_timeout
 import sys
 
-@lru_cache(maxsize=None)
-def calculate(string):
-    return sympy.expand(preTreatment(string))
-
 def generate():
-    declare = genDeclare()
-    poly = genDate(2)
-    poly = declare + poly
-    origin = execute_java(poly, "parse_func.dll")[0]
+    poly = execute_py("", "generate.py")
+    origin = execute_java(poly, "parse_func.dll")[0].replace("e", "exp").replace("dx", "diff")
     return poly, origin
 
 @lru_cache(maxsize=None)
-@func_set_timeout(10)
+@func_set_timeout(20)
 def evaluate(origin, poly, name):
-    out, t = execute_java(poly, name)
-    oriSym = sympy.sympify(preTreatment(origin.replace("e", "exp")))
+    out = ""
+    try:
+        out = execute_java(poly, name)[0]
+    except func_timeout.exceptions.FunctionTimedOut as e:
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d@%H-%M-%S@" + os.path.splitext(jar_file)[0].split("\\")[1])
+        with open ("./errors/" + current_time + ".log", "w") as f:
+            f.write(os.path.basename(jar_file) + ": Time Limit Exceeded.\n")
+            f.write("Input:\n" + poly + "\n")
+            f.write("Origin:\n" + origin + "\n")
+
+        return False, -1
+
+    oriSym = sympy.sympify(preTreatment(origin))
     outSym = sympy.sympify(preTreatment(out))
     check_result = execute_java(out, "checker.dll")[0].split("\n")[0]
     if check_result == "true" and oriSym.equals(outSym):
@@ -72,7 +77,7 @@ while True:
         try:
             res = evaluate(origin, poly, str(os.path.basename(jar_file)))
             if (res[0] == False):
-                print(str(name) + ": " + Fore.RED + "Wrong\n" + Fore.WHITE)
+                print(str(name) + ": " + Fore.RED + "Wrong or TLE\n" + Fore.WHITE)
                 wrong += 1
             else:
                 if length == -1:
@@ -86,12 +91,7 @@ while True:
             pass
         except func_timeout.exceptions.FunctionTimedOut as e:
             tle += 1
-            print(str(os.path.basename(jar_file)) + ": " + Fore.YELLOW  + "Time Limit Exceeded" + Fore.WHITE)
-            with open ("./errors/" + "tle.log", "a") as f:
-                f.write(os.path.basename(jar_file) + ": Time Limit Exceeded.\n")
-                f.write("Input:\n" + poly + "\n")
-                f.write("Origin:\n" + origin + "\n")
-                f.write("\n\n===================================================\n")
+            print(str(os.path.basename(jar_file)) + ": " + Fore.WHITE  + "Prase Time Limit Exceeded" + Fore.WHITE)
         except Exception as e:
             wrong += 1
             print(str(os.path.basename(jar_file)) + ": " + Fore.RED + "Error\n" + Fore.WHITE)

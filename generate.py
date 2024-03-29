@@ -1,15 +1,7 @@
 import random
+import os
+import json
 import re
-
-expPool = [0, 0, 0, 0, 1, 2, 2, 1, 3, 3]
-numPool = [0, 0, 0, 1, 1, 1, 2, 3, 114514, 2147483647, 2147483648, 2147483649, 4294967296, 998244353]
-funPool = ["f", "g", "h"]
-arguPool = ["x", "y", "z"]
-
-namePool = []
-arguNumDict = {}
-arguListDict = {}
-funNum = 0
 
 def remove_leading_zeros(text):
     return re.sub(r'\b0+(\d+)', r'\1', text)
@@ -17,206 +9,249 @@ def remove_leading_zeros(text):
 def preTreatment(string):
     return remove_leading_zeros(string.replace('^','**').replace(" ", "").replace("\t",""))
 
-def genDeclare():
-    global funNum
-    global arguNumDict
-    global arguListDict
-    global namePool
+##############################--全局变量的定义--##############################
 
-    funNum = 0
-    arguNumDict.clear()
-    arguListDict.clear()
-    namePool.clear()
+config = json.load(open("config3.json",encoding='utf-8'))
+isgenerateFun = False   #是否正在产生自定义函数
 
-    deepNum = random.randint(0, 1)
-    string = ""
-    num = random.randint(0, 3)
-    funNum = num
-    string = string + str(num) + "\n"
-    names = random.sample(funPool, num)
-    namePool.extend(names)
-    for i in range(num):
-        name = random.choice(names)
-        names.remove(name)
-        arguNum = random.randint(1, 3)
-        arguList = random.sample(arguPool, arguNum)
-        arguNumDict[name] = arguNum
-        arguListDict[name] = arguList
+# test_num=1  #测试用例数
+# term_limit=5    #项数上限
+# factor_limit=5  #因子数上限
+# floor=3   #括号嵌套层数上限
 
-        string = string + name + '(' + ','.join(arguList) + ")="
-        string = string + getExpr(deepNum, True, name) + "\n"
+# deltaFactor=0.15    #求导因子概率
+# expFunFactor=0.15    #指数函数因子概率
+# myFunFactor=0.15    #自定义函数因子概率
+# exprFactor=0.15    #表达式因子概率
 
-    return string
+# expFunFactor_exp=0.2    #指数函数因子后携带指数的概率
+# exprFactor_exp=0.2  #表达式因子后携带指数的概率
+# constFactor_zero=0.05    #常数因子中产0概率
+# constFactor_big=0.05    #常数因子中产大数概率
 
-def genDate(deepNum):
-    string = getExpr(deepNum)
-    if (len(string) > 200):
-        return genDate(deepNum)
-    return string
+# blank_prob=0.3   #空白符概率
+# sign_prob=0.5    #多余正负号的概率
+# zero_prob=0.1    #前导0概率
 
+# automyFun=True  #是否自动生成自定义函数
+# myFun_floor=1   #自定义函数因子中的表达式层数上限
+# myFun_term_limit=3  #自定义函数因子中的项数上限
+# myFun_factor_limit=3    #自定义函数因子中的因子数上限
+myFun_name=[] #函数名
+myFun_parameter=[]   #参数
+myFun_function=[]  #函数
 
-def getExpr(deepNum, gen=False, name='bug'):
-    string = ""
-    termNum = random.randint(1,3)
-    r = random.uniform(0,1)
-    if (r < 0.35):
-        string = string + getWhite() + "+" + getWhite() + getTerm(deepNum, gen, name)
-    elif (r < 0.7):
-        string = string + getWhite() + "-" + getWhite() + getTerm(deepNum, gen, name)
-    else:
-        string = string + getWhite() + getTerm(deepNum, gen, name)
-
-    for i in range(termNum - 1):
-        if (random.randint(0, 1)):
-            string = string + getWhite() + "+" + getWhite() + getTerm(deepNum, gen, name)
+##############################--小函数--##############################
+#生成空白符、正负号、前导0、指数
+def generate_blank():
+    if random.random() < float(config["blank_prob"]):
+        if random.random() < 0.8:
+            return ' '
         else:
-            string = string + getWhite() + "-" + getWhite() + getTerm(deepNum, gen, name)
-
-    return string
-
-
-def getTerm(deepNum, gen=False, name='bug'):
-    string = ""
-    factorNum = random.randint(1, 3)
-    r = random.uniform(0, 1)
-    if (r < 0.35):
-        string = string + getWhite() + "+" + getWhite() + getFactor(deepNum, gen, name)
-    elif (r < 0.7):
-        string = string + getWhite() + "-" + getWhite() + getFactor(deepNum, gen, name)
+            return '\t'
     else:
-        string = string + getWhite() + getFactor(deepNum, gen, name)
+        return ''
 
-    for i in range(factorNum - 1):
-         string = string + getWhite() + "*" + getWhite() + getFactor(deepNum, gen, name)
-
-    return string
-
-
-def getFactor(deepNum, gen=False, name='bug'):
-    r = random.uniform(0, 1)
-    if (gen == False):
-        if (deepNum > 0):
-            if (r<0.4 and funNum > 0):
-                return getFunFactor(deepNum - 1)
-            elif (r < 0.5):
-                return getConFactor()
-            elif (r < 0.6):
-                return getPowFactor()
-            elif (r < 0.8):
-                return getExpFactor(deepNum - 1)
-            else:
-                return getExprFactor(deepNum - 1)
+def generate_sign():
+    if random.random() < float(config["sign_prob"]):
+        return ''
+    else:
+        if random.random() > 0.5:
+            return '+'
         else:
-            if (r < 0.5):
-                return getConFactor()
-            else:
-                return getPowFactor()
+            return '-'
+        
+def generate_zero():
+    if random.random() < float(config["zero_prob"]):
+        return '0'
     else:
-        if (deepNum > 0):
-            if (r < 0.3):
-                return getConFactor()
-            elif (r < 0.6):
-                return getPowFactor(gen, name)
-            elif (r < 0.9):
-                return getExpFactor(deepNum - 1, gen, name)
-            else:
-                return getExprFactor(deepNum - 1, gen, name)
+        return ''
+
+def generate_exp():
+    string='^'+generate_blank()
+    if random.random() > float(config["sign_prob"]):
+        string=string+'+'
+    string=string+generate_zero()
+    return string+str(random.randint(0, 3))  #指数上限
+
+##############################--不同因子的生成--##############################
+
+def generate_delta(floor):    #求导因子
+    string='dx'+generate_blank()+'('+generate_blank()
+    if floor<=1:
+        if random.random() < 0.5:
+            string=string+generate_constant()
         else:
-            if (r < 0.5):
-                return getConFactor()
-            else:
-                return getPowFactor(gen, name)
-
-
-def getConFactor():
-    string = ""
-
-    rSign = random.uniform(0,1)
-    if (rSign < 0.3):
-        string = getWhite() + "+"
-    elif (rSign <0.6):
-        string = getWhite() + "-"
-
-    rValue = random.uniform(0,1)
-    if (rValue < 0.1):
-        string = string + getWhite() + getZero() + str(random.choice(numPool))
-    elif (rValue < 0.3):
-        string = string + getWhite() + getZero() + str(random.randint(0,15))
-    elif (rValue < 0.4):
-        string = string + getWhite() + getZero() + str(random.randint(2147483647,4147483647))
+            string=string+generate_power()
     else:
-        string = string + getWhite() + getZero() + str(random.randint(0, 100))
-
+        string=string+generate_factor(floor)    #方便求导因子内部更加复杂
+    string=string+generate_blank()+')'
     return string
 
+def generate_expFun(floor):    #指数函数因子
+    string='exp'+generate_blank()+'('+generate_blank()+generate_factor(floor-1)+generate_blank()+')'
+    if random.random() < config["expFunFactor_exp"]:
+        string=string+generate_blank()+generate_exp()
+    return string
 
-def getPowFactor(gen=False, name='bug'):
-    string = ""
-    if (not gen):
-        string = string + getWhite() + "x" + getWhite() + "^"
+def generate_myFun(floor):    #自定义函数因子
+    if myFun_function.__len__()==0:
+        return generate_factor(floor)   #没有自定义函数时重新产生因子
+    key=random.randint(0,myFun_function.__len__()-1)
+    string=myFun_name[key]+generate_blank()+'('+generate_blank()+generate_factor(floor-1)+generate_blank()
+    for i in range(1,myFun_parameter[key].__len__()):
+        string=string+','+generate_blank()+generate_factor(floor-1)+generate_blank()
+    return string+')'
+
+def generate_exprF(floor): #表达式因子
+    string='('+generate_blank()+generate_expr(floor-1)+generate_blank()+')'
+    if random.random() < float(config["exprFactor_exp"]):
+        string=string+generate_blank()+generate_exp()
+    return string
+
+def generate_constant():    #常数因子
+    constFactor_zero=config["constFactor_zero"]
+    constFactor_big=config["constFactor_big"]
+    probability=random.random()
+    tmp=0
+    if probability < constFactor_zero:
+        return generate_sign()+'0'
+    elif probability < constFactor_zero+constFactor_big:
+        tmp=random.randint(-999999999, 999999999)
     else:
-        arguList = arguListDict[name]
-        var = random.choice(arguList)
-        string = string + getWhite() + var + getWhite() + "^"
-
-    if (random.uniform(0,1) < 0.5):
-        string = string + getWhite() + "+"
-    string = string + getWhite() + str(random.choice(expPool))
-
-    return string
-
-
-def getExprFactor(deepNum, gen=False, name='bug'):
-    # print(deepNum)
-    if (random.uniform(0,1) < 0.3):
-        return "(" + getExpr(deepNum, gen, name) + ")"
-    string = getWhite() + "(" + getWhite() + getExpr(deepNum, gen, name) + getWhite() + ")" + getWhite() + "^" + str(random.choice(expPool))
-    return string
-
-
-def getExpFactor(deepNum, gen=False, name='bug'):
-    string = "exp("
-    string = string + getFactor(deepNum, gen, name)
-    string = string + ")"
-    return string
-
-def getFunFactor(deepNum):
-    global namePool
-    global arguNumDict
-    name = random.choice(namePool)
-    arguNum = arguNumDict[name]
-    arguR = []
-    for i in range(arguNum):
-        arguR.append(getFactor(deepNum))
-    return name + '(' + ','.join(arguR) + ')'
-
-def getWhite():
-    string = ""
-    r = random.uniform(0,1)
-    if (r < 0.9):
-        string = ""
+        tmp=random.randint(-20, 20)
+    if tmp>0:
+        return generate_sign().replace('-','+')+str(tmp)
     else:
-        if (random.uniform(0,1) < 0.9):
-            num = random.randint(1,2)
+        return str(tmp)
+
+def generate_power():    #幂函数因子
+    return 'x'+generate_blank()+generate_exp()
+
+##############################--表达式、项、因子、自定义函数的生成--##############################
+
+def generate_fun(): #产生自定义函数
+    global myFun_name,myFun_parameter,myFun_function,isgenerateFun
+    myFun_name=[] #函数名
+    myFun_parameter=[]   #参数
+    myFun_function=[]  #函数
+    isgenerateFun = True
+    num=random.randint(0,3)
+    namelist=['f','g','h']
+    
+    for i in range(0,num):
+        myFun_name.append(random.choice(namelist))
+        namelist.remove(myFun_name[i])
+
+        canshu_num=random.randint(1,3)
+        canshulist=['x','y','z']
+        tmp_canshu=[]
+        for j in range(0,canshu_num):
+            tmp_canshu.append(random.choice(canshulist))
+            canshulist.remove(tmp_canshu[j])
+        myFun_parameter.append(tmp_canshu)
+
+        tmp_function=generate_expr(config["myFun_floor"])
+        #随机替换参数
+        pos=0
+        j=0
+        while pos<tmp_function.__len__():
+            if tmp_function[pos]=='x' and (pos+1==tmp_function.__len__() or tmp_function[pos+1]!='p') :
+                tmp_list=list(tmp_function)
+                tmp_list[pos]=myFun_parameter[i][j]
+                tmp_function=''.join(tmp_list)
+                j+=1
+                if j==canshu_num:
+                    break
+            pos+=1
+        while pos<tmp_function.__len__():
+            if tmp_function[pos]=='x' and (pos+1==tmp_function.__len__() or tmp_function[pos+1]!='p') :
+                tmp_list=list(tmp_function)
+                tmp_list[pos]=random.choice(myFun_parameter[i])
+                tmp_function=''.join(tmp_list)
+            pos+=1
+        myFun_function.append(tmp_function)
+    
+    isgenerateFun = False
+
+def generate_factor(floor): #产生因子
+    probability=random.random()
+    control=int(config["floor"])-floor+1
+    if isgenerateFun:
+        deltaFactor=0
+    else:
+        deltaFactor=float(config["deltaFactor"])
+    expFunFactor=float(config["expFunFactor"])
+    myFunFactor=float(config["myFunFactor"])
+    exprFactor=float(config["exprFactor"])
+    
+    if floor<=0:
+        if random.random()<0.5:
+            return generate_constant()
         else:
-            num = random.randint(3,5)
-
-        for _ in range(num):
-            flag = random.randint(0,1)
-            if flag == 0:
-                string = string + ' '
-            else:
-                string = string + '\t'
-
-    return string
-
-def getZero():
-    string = ""
-    if (random.uniform(0, 1) < 0.8):
+            return generate_power()
+    
+    if probability < deltaFactor/control:
+        return generate_delta(floor-1)
+    elif probability < (deltaFactor+expFunFactor)/control:
+        string=generate_expFun(floor-1)
         return string
+    elif probability < (deltaFactor+myFunFactor+expFunFactor)/control:
+        return generate_myFun(floor-1)
+    elif probability < (deltaFactor+myFunFactor+expFunFactor+exprFactor)/control:
+        return generate_exprF(floor-1)
+    else :
+        if random.random()<0.5:
+            return generate_constant()
+        else:
+            return generate_power()
 
-    num = random.randint(1,3)
-    for i in range(num):
-        string = string + "0"
 
+def generate_term(floor):   #产生项
+    string=generate_sign()+generate_blank()+generate_factor(floor)
+    if isgenerateFun:
+        factor_limit=int(config["myFun_factor_limit"])/(int(config["myFun_floor"])-floor+1)
+    else :
+        factor_limit=int(config["factor_limit"])/(int(config["floor"])-floor+1)
+    for i in range(0,int(factor_limit-1)):
+        string=string+generate_blank()+'*'+generate_blank()+generate_factor(floor)
     return string
+
+def generate_expr(floor):   #产生表达式
+    string=generate_blank()+generate_sign()+generate_blank()+generate_term(floor)+generate_blank()
+    if isgenerateFun:
+        term_limit=int(config["myFun_term_limit"])/(int(config["myFun_floor"])-floor+1)
+    else :
+        term_limit=int(config["term_limit"])/(int(config["floor"])-floor+1)
+    for i in range(0,int(term_limit-1)):
+        if random.random() > 0.5:
+            string=string+'+'
+        else:
+            string=string+'-'
+        string=string+generate_blank()+generate_term(floor)+generate_blank()
+    return string
+
+##############################--主函数--##############################
+
+if __name__ == "__main__":
+    config = json.load(open("config3.json",encoding='utf-8'))
+    test_num = int(config["test_num"])  #测试用例数
+    floor = int(config["floor"])    #括号嵌套层数上限
+    automyFun = bool(config["automyFun"])    #是否自动生成自定义函数
+
+    if automyFun:
+        generate_fun()
+    else:
+        myFun_name=config["myFun_name"]
+        myFun_parameter=config["myFun_parameter"]
+        myFun_function=config["myFun_function"]
+    print(myFun_name.__len__())
+
+    for j in range(0,myFun_name.__len__()):
+        tmp_function=myFun_name[j]+generate_blank()+'('+generate_blank()
+        tmp_function=tmp_function+','.join(myFun_parameter[j])
+        tmp_function=tmp_function+generate_blank()+')'+generate_blank()+'='+generate_blank()+myFun_function[j]
+        print(tmp_function)
+    print(generate_expr(floor))
+
+

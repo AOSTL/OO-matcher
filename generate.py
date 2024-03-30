@@ -1,29 +1,72 @@
+# generate.py
+# [(float x.y)time]id-FROM-(int)fromFloor-TO-(int)toFloor-BY-(int)elevatorId
 import random
 import json
 
-config=json.load(open('config.json','r',encoding='utf-8'))
+config = json.load(open('config.json', 'r', encoding='utf-8'))
+MAX_INT = 1 << 31 - 1
+
+
+elevator_pool = [1, 2, 3, 4, 5, 6]
+# elevator_pool = [1,3,5]
+floor_pool = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+# floor_pool = [1,2,10,11]
+id_dirt = {}
+
+
+def get_id():
+    id = random.randint(1, MAX_INT)
+    while id_dirt.get(id) == True:
+        id = random.randint(1, MAX_INT)
+    id_dirt[id] = True
+    return id
+
+
+def get_time_gap():
+    chance = random.randint(0, MAX_INT) % 100
+    if chance < 5:
+        return 10
+    elif chance >= 95:
+        return 5
+    elif chance >= 5 and chance < 10 or chance >= 90 and chance < 95:
+        return random.uniform(1.0, 5.0)
+    elif chance >= 10 and chance < 20 or chance >= 80 and chance < 90:
+        return 0
+    else:
+        return random.uniform(0, 1.0)
+
+
+def get_floor():
+    return random.choice(floor_pool)
+
+
+def get_elevator():
+    return random.choice(elevator_pool)
+
+
+def generate(num):
+    time = 0.0
+    ans = []
+    for _ in range(num):
+        if (time > 1000):
+            break
+        time += get_time_gap()
+        id = str(get_id())
+        from_floor = str(get_floor())
+        to_floor = str(get_floor())
+        while to_floor == from_floor:
+            to_floor = str(get_floor())
+        elevator_id = str(get_elevator())
+        # print('[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id)
+        string = '[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id
+        ans.append([time, string])
+        return ans, num
 
 def generate_input():
-    idlist=list(range(1,101))
-    for i in range(0,10):
-        idlist.append(random.randint(101,999999999))
-    random.shuffle(idlist)
+    num = random.randint(1, int(config["command_limit"]))
+    return generate(num)
 
-    command_num=random.randint(1,int(config["command_limit"]))
-    time_limit=float(config["time_limit"])
-    ans=[]
-    for i in range(0,command_num):
-        thistime=random.random()*(time_limit-1)+1
-        afrom=int(0)
-        to=int(0)
-        while afrom==to:
-            afrom=random.randint(int(config["min_floor"]),int(config["max_floor"]))
-            to=random.randint(int(config["min_floor"]),int(config["max_floor"]))
-        elevator=random.randint(1,int(config["elevator_num"]))
 
-        string='['+format(thistime,'.1f')+']'+str(idlist[i])+'-FROM-'+str(afrom)+'-TO-'+str(to)+'-BY-'+str(elevator)
-        ans.append([thistime,string])
-
-    #按thistime从小到大排序
-    ans.sort(key=lambda x:x[0])
-    return ans, command_num
+if __name__ == "__main__":
+    num = random.randint(1,int(config["command_limit"]))
+    generate(num)

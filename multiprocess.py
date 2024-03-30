@@ -11,6 +11,9 @@ import sys
 import evaluate
 import func_timeout
 
+wrong = 0
+tle = 0
+
 def fun(input_str, name, jar_file, interact):
     global wrong
     global tle
@@ -37,8 +40,6 @@ def fun(input_str, name, jar_file, interact):
 
 def multi_process(jar_files, interact):
     test_case = 0
-    wrong = 0
-    tle = 0
     while True:
         test_case += 1
         origin, command_number = generate.generate_input()
@@ -69,7 +70,7 @@ def multi_process(jar_files, interact):
 
         if (interact):
             time.sleep(0.75)
-            os.system('cls' if os.name == 'nt' else 'clear')
+            # os.system('cls' if os.name == 'nt' else 'clear')
         else:
             with open ("matcher.log", "w") as f:
                 f.write("epoch: " + str(test_case) + " Wrong: " + str(wrong) + " TLE: " + str(tle))

@@ -4,8 +4,8 @@ import random
 import json
 
 config = json.load(open('config.json', 'r', encoding='utf-8'))
-MAX_INT = 1 << 31 - 1
 
+MAX_INT = 1 << 31 - 1
 
 elevator_pool = [1, 2, 3, 4, 5, 6]
 # elevator_pool = [1,3,5]
@@ -44,30 +44,24 @@ def get_elevator():
     return random.choice(elevator_pool)
 
 
-def generate(num):
-    time = 0.0
+def generate_input():
+    realNum = 0
     ans = []
-    for _ in range(num):
-        if (time > 50):
-            num = _
-            break
+    maxNum = random.randint(1, int(config["command_limit"]))
+    time = 0.0
+    for _ in range(maxNum):
         time += get_time_gap()
+        if (time > float(config["time_limit"])):
+            break
+
         id = str(get_id())
         from_floor = str(get_floor())
         to_floor = str(get_floor())
         while to_floor == from_floor:
             to_floor = str(get_floor())
         elevator_id = str(get_elevator())
-        # print('[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id)
-        string = '[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id
+        realNum = realNum + 1
+        string = '[' + str(
+            format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id
         ans.append([time, string])
-    return ans, num
-
-def generate_input():
-    num = random.randint(1, int(config["command_limit"]))
-    return generate(num)
-
-
-if __name__ == "__main__":
-    num = random.randint(1,int(config["command_limit"]))
-    generate(num)
+    return ans, realNum

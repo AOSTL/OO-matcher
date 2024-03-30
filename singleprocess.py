@@ -15,11 +15,7 @@ def single_process(jar_files, interact):
         if (interact):
             print("---->   epoch " + str(test_case) + "   ---   wrong: " + str(wrong) + "   ---   tle: " + str(tle) + "   <----")
 
-        origin, command_number = generate.generate_input()
-        input_str = ""
-        for i in range(0, command_number):
-            input_str += origin[i][1] + "\n"
-
+        input_str, command_number = generate.generate_input()
         if (interact):
             print("input lines:" + str(command_number))
         

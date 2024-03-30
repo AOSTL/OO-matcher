@@ -10,7 +10,7 @@ def execute_java(stdin, name):
     stdout, stderr = proc.communicate(stdin.encode())
     return stdout.decode().strip()
 
-@func_set_timeout(10)
+@func_set_timeout(90)
 def execute_java_with_program(name, input_program):
     input_proc_cmd = [input_program]
     input_proc = subprocess.Popen(input_proc_cmd, stdout=subprocess.PIPE)

@@ -24,13 +24,13 @@ def get_id():
 
 def get_time_gap():
     chance = random.randint(0, MAX_INT) % 100
-    if chance < 5:
+    if chance < 2:
         return 10
-    elif chance >= 95:
+    elif chance >= 98:
         return 5
     elif chance >= 5 and chance < 10 or chance >= 90 and chance < 95:
         return random.uniform(1.0, 5.0)
-    elif chance >= 10 and chance < 20 or chance >= 80 and chance < 90:
+    elif chance >= 10 and chance < 45 or chance >= 55 and chance < 90:
         return 0
     else:
         return random.uniform(0, 1.0)
@@ -48,7 +48,8 @@ def generate(num):
     time = 0.0
     ans = []
     for _ in range(num):
-        if (time > 1000):
+        if (time > 50):
+            num = _
             break
         time += get_time_gap()
         id = str(get_id())
@@ -60,7 +61,7 @@ def generate(num):
         # print('[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id)
         string = '[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id
         ans.append([time, string])
-        return ans, num
+    return ans, num
 
 def generate_input():
     num = random.randint(1, int(config["command_limit"]))

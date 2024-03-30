@@ -46,7 +46,7 @@ def get_elevator():
 
 def generate_input():
     realNum = 0
-    ans = []
+    string = ""
     maxNum = random.randint(1, int(config["command_limit"]))
     time = 0.0
     for _ in range(maxNum):
@@ -60,8 +60,8 @@ def generate_input():
         while to_floor == from_floor:
             to_floor = str(get_floor())
         elevator_id = str(get_elevator())
+
         realNum = realNum + 1
-        string = '[' + str(
-            format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id
-        ans.append([time, string])
-    return ans, realNum
+        string += '[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id
+
+    return string, realNum

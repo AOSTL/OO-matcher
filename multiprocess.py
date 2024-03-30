@@ -42,10 +42,8 @@ def multi_process(jar_files, interact):
     test_case = 0
     while True:
         test_case += 1
-        origin, command_number = generate.generate_input()
-        input_str = ""
-        for i in range(0, command_number):
-            input_str += origin[i][1] + "\n"
+        input_str, command_number = generate.generate_input()
+
         if (interact):
             print("---->   epoch " + str(test_case) + "   ---   wrong: " + str(wrong) + "   ---   tle: " + str(tle) + "   <----")
             print("input lines:" + str(command_number))

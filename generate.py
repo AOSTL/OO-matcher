@@ -5,7 +5,9 @@ import json
 
 config = json.load(open('config.json', 'r', encoding='utf-8'))
 
+
 MAX_INT = 1 << 31 - 1
+
 
 elevator_pool = [1, 2, 3, 4, 5, 6]
 # elevator_pool = [1,3,5]
@@ -62,6 +64,6 @@ def generate_input():
         elevator_id = str(get_elevator())
 
         realNum = realNum + 1
-        string += '[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id
+        string += '[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id + '\n'
 
     return string, realNum

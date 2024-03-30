@@ -10,7 +10,7 @@ def execute_java(stdin, name):
     stdout, stderr = proc.communicate(stdin.encode())
     return stdout.decode().strip()
 
-@func_set_timeout(120)
+@func_set_timeout(90)
 def execute_java_with_program(name, input_program):
     input_proc_cmd = [input_program]
     input_proc = subprocess.Popen(input_proc_cmd, stdout=subprocess.PIPE)
@@ -19,7 +19,6 @@ def execute_java_with_program(name, input_program):
     grep_process = subprocess.Popen(grep_command, stdin=input_proc.stdout, stdout=subprocess.PIPE)
     output, _ = grep_process.communicate()
     end_time = time.time()
-    print("time: ",end_time-start_time)
     return output.decode().strip(), end_time - start_time
 
 def execute_py(stdin, name):

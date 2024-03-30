@@ -3,12 +3,17 @@ import re
 import json
 import error
 from functools import lru_cache
+import os
 config=json.load(open('config.json','r',encoding='utf-8'))
 
 def evaluate(origin, name):
-    output, run_time = run_java.execute_java_with_program(name, '.\\tools\\datainput_student_win64.exe')
+    if (os.name == 'nt'):
+        program_path = '.\\tools\\datainput_student_win64.exe'
+    else:
+        program_path = './tools/datainput_student_linux_x86_64'
+    output, run_time = run_java.execute_java_with_program(name, program_path)
     waiters = get_waiters(origin)
-    return check(output, waiters, name, origin)
+    return check(output, waiters, name, origin), run_time
 
 def get_waiters(origin):
     command_num = origin.count('\n')

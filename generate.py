@@ -48,7 +48,7 @@ def generate_input():
     realNum = 0
     string = ""
     maxNum = random.randint(1, int(config["command_limit"]))
-    time = 0.0
+    time = 1.0
     for _ in range(maxNum):
         time += get_time_gap()
         if (time > float(config["time_limit"])):

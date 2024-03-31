@@ -1,5 +1,3 @@
-# generate.py
-# [(float x.y)time]id-FROM-(int)fromFloor-TO-(int)toFloor-BY-(int)elevatorId
 import random
 import json
 

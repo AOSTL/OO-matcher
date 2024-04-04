@@ -3,15 +3,16 @@ import json
 
 config = json.load(open('config.json', 'r', encoding='utf-8'))
 
-
 MAX_INT = 1 << 31 - 1
-
 
 elevator_pool = [1, 2, 3, 4, 5, 6]
 # elevator_pool = [1,3,5]
 floor_pool = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 # floor_pool = [1,2,10,11]
 id_dirt = {}
+
+reset_capacity_pool = [3, 4, 5, 6, 7, 8]
+reset_speed_pool = [0.2, 0.3, 0.4, 0.5, 0.6]
 
 
 def get_id():
@@ -44,6 +45,23 @@ def get_elevator():
     return random.choice(elevator_pool)
 
 
+def generate_person(time):
+    id = str(get_id())
+    from_floor = str(get_floor())
+    to_floor = str(get_floor())
+    while to_floor == from_floor:
+        to_floor = str(get_floor())
+    elevator_id = str(get_elevator())
+    return '[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id + '\n'
+
+
+def generate_reset(time):
+    elevator = str(get_elevator())
+    capacity = str(random.choice(reset_capacity_pool))
+    speed = str(random.choice(reset_speed_pool))
+    return '[' + str(format(time, '.1f')) + ']' + 'RESET-Elevator-' + elevator + '-' + capacity + '-' + speed + '\n'
+
+
 def generate_input():
     realNum = 0
     string = ""
@@ -54,14 +72,14 @@ def generate_input():
         if (time > float(config["time_limit"])):
             break
 
-        id = str(get_id())
-        from_floor = str(get_floor())
-        to_floor = str(get_floor())
-        while to_floor == from_floor:
-            to_floor = str(get_floor())
-        elevator_id = str(get_elevator())
-
         realNum = realNum + 1
-        string += '[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id + '\n'
-
+        chance = random.randint(0, MAX_INT) % 100
+        if chance < 80:
+            string += generate_person(time)
+        else:
+            string += generate_reset(time)
+    print(string)
     return string, realNum
+
+if __name__ =="__main__":
+    generate_input()

@@ -1,11 +1,10 @@
-import run_java
-import re
+import run.run_java as rj
 import json
-import error
+import run.error as error
 from functools import lru_cache
 import os
 import func_timeout
-import checker
+import run.checker as checker
 
 config=json.load(open('config.json','r',encoding='utf-8'))
 
@@ -17,7 +16,8 @@ def evaluate(origin, name):
     output = ""
     run_time = 0
     try:
-        output, run_time = run_java.execute_java_with_program(name, program_path)
+        output, run_time = rj.execute_java_with_program(name, program_path)
+        output = output.replace('\r', '')
     except func_timeout.exceptions.FunctionTimedOut as e:
         error.error_output(name, "Time Limit Exceeded", origin, "", e)
         return False, 0

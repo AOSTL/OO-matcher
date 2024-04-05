@@ -1,6 +1,6 @@
-import error
-import generate
-import evaluate
+import run.evaluate
+import run.generate
+import run.error
 import func_timeout
 import time
 import os
@@ -15,7 +15,7 @@ def single_process(jar_files, interact):
         if (interact):
             print("---->   epoch " + str(test_case) + "   ---   wrong: " + str(wrong) + "   ---   tle: " + str(tle) + "   <----")
 
-        input_str, command_number = generate.generate_input()
+        input_str, command_number = run.generate.generate_input()
         if (interact):
             print("input lines:" + str(command_number))
         
@@ -28,7 +28,7 @@ def single_process(jar_files, interact):
                 name = os.path.splitext(jar_file)[0].split("/")[1]
 
             try:
-                res, run_time = evaluate.evaluate(input_str, name)
+                res, run_time = run.evaluate.evaluate(input_str, name)
                 if (interact):
                     if (res == False):
                         print(str(name) + ": " + Fore.RED + "Wrong or TLE" + Fore.WHITE)
@@ -45,7 +45,7 @@ def single_process(jar_files, interact):
                 wrong += 1
                 if (interact):
                     print(str(os.path.basename(jar_file)) + ": " + Fore.RED + "Error" + Fore.WHITE)
-                error.error_output(name, "Unkown Error", input_str, "", e)
+                run.error.error_output(name, "Unkown Error", input_str, "", e)
 
         if (interact):
             time.sleep(0.75)

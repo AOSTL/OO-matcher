@@ -1,14 +1,11 @@
 import threading
 import time
-import glob
 import os
-from multiprocessing.pool import worker
-
-from colorama import Fore, Back, Style
-import error
-import generate
 import sys
-import evaluate
+from colorama import Fore, Back, Style
+import run.generate
+import run.evaluate
+import run.error
 import func_timeout
 
 wrong = 0
@@ -18,7 +15,7 @@ def fun(input_str, name, jar_file, interact):
     global wrong
     global tle
     try:
-        res, run_time = evaluate.evaluate(input_str, name)
+        res, run_time = run.evaluate.evaluate(input_str, name)
         if (interact):
             if (res == False):
                 print(str(name) + ": " + Fore.RED + "Wrong or TLE" + Fore.WHITE)
@@ -35,14 +32,14 @@ def fun(input_str, name, jar_file, interact):
         wrong += 1
         if (interact):
             print(str(os.path.basename(jar_file)) + ": " + Fore.RED + "Error" + Fore.WHITE)
-        error.error_output(name, "Unkown Error", input_str, "", e)
+        run.error.error_output(name, "Unkown Error", input_str, "", e)
 
 
 def multi_process(jar_files, interact):
     test_case = 0
     while True:
         test_case += 1
-        input_str, command_number = generate.generate_input()
+        input_str, command_number = run.generate.generate_input()
 
         if (interact):
             print("---->   epoch " + str(test_case) + "   ---   wrong: " + str(wrong) + "   ---   tle: " + str(tle) + "   <----")

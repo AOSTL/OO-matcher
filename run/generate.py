@@ -65,6 +65,8 @@ def generate_reset(time, ele):
 
 def generate_input():
     global last_reset_time
+    global id_dirt
+    id_dirt = {}
     realNum = 0
     string = ""
     maxNum = random.randint(1, int(config["command_limit"]))

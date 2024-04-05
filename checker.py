@@ -1,297 +1,210 @@
-import os
-import error
+import re
 import json
+import error
 
-config = json.load(open("config.json", "r"))
+config = json.load(open('config.json', 'r'))
 
-
-class Req:
-    def __init__(self, req):
-        eles = self.parseReq(req)
-        self.passenger_id = int(eles[0])
-        self.ff = int(eles[2])
-        self.tf = int(eles[4])
-        self.cf = -1    # 最终到达的楼层
-        self.r = False  # receive
-
-    def parseReq(self, req):
-        req = req.replace('\n', '')
-        index = req.index(']')
-        req = req[index + 1:]
-        return req.split('-')
-
-    def getUserId(self):
-        return self.passenger_id
-
-    def getFromFloor(self):
-        return self.ff
-
-    def getToFloor(self):
-        return self.tf
-
-    def getReceive(self):
-        return self.r
-
-    def setFromFloor(self, ff):
-        self.ff = ff
-
-    def setCurFloor(self, cf):
-        self.cf = cf
-
-    def setReceive(self, r):
-        self.r = r
-
-
-STATE_OPEN = 0
-STATE_CLOSE = 1
-STATE_RESET_BEGIN = 2
-STATE_RESET_END = 3
-MAX_FLOOR = 11
-MIN_FLOOR = 1
-
-reqDict = {}
-speeds = []  # 6 elevators速度，上下两层楼的时间
-capacities = []  # 6 elevators容量
-preSpeeds = []
-preCapacities = []
-floors = []  # 6 elevators上一个楼层
-states = []  # 0 open, 1 close, 2 reset
-passengers = {}  # 6 elevators上的乘客
-receives = []  # 6 elevators 是否收到Recevive请求
-allPassengers = []  # 所有乘客 passenger_id -> elevator_id[0-5]
-lastMoveTime = []  # 6 elevators上一次移动时间点
-lastOpenTime = []  # 6 elevators上一次开门时间点
-lastOpTime = []  # 6 elevators上一次操作时间点
-lastResetTime = []  # 6 elevators上一次reset时间点，set期间不允许open，close，in，out，receive
-
-flag = [0]
-
-
-def check(input_str, output_str, name):
-    initElevator()
-    processInput(input_str)
-    flag[0] = 1
-    count = 1
-    lines = output_str.split('\n')
-    for line in lines:
-        if line != "":
-            res = process(line, count)
-            count += 1
-            if not res[0]:
-                error.error_output(
-                    name, res[1], input_str, output_str, "Line: " + str(res[2]))
-                return False
-
-    if len(reqDict) != 0:
-        missing = ""
-        for req in reqDict.values():
-            missing += str(req.getUserId()) + "\n"
-        error.error_output(name, "Not all requests are processed",
-                           input_str, output_str, "Missing: " + missing)
+def check(origin: str, output: str, name: str):
+    origin = trim(origin)
+    output = trim(output)
+    waiters = analyze_input(origin)
+    if type(waiters) == str:
+        error.error_output(name, 'Format Error', origin, output, waiters)
         return False
-    for i in range(6):
-        if len(passengers[i]) != 0:
-            error.error_output(name, "Someone is trapped in elevator", input_str, output_str,
-                               "Elevator ID: " + str(i + 1))
-        if states[i] != STATE_CLOSE:
-            error.error_output(name, "Elevator door is not close",
-                               input_str, output_str, "Elevator ID: " + str(i + 1))
-            return False
-    if flag[0] == 1:
-        return True
+    actions = analyze_output(output)
+    if type(actions) == str:
+        error.error_output(name, 'Format Error', origin, output, actions)
+        return actions
+    res = imitate(waiters, actions)
+    if (res[0] == False):
+        error.error_output(name, res[1], origin, output, 'On line ' + str(res[2]) + ' .')
+    return res[0]
+
+def analyze_input(origin: str) -> dict[int, list[int, int, float]] | str:
+    lines = origin.split('\n')
+    waiters = {}
+    for i in range(len(lines)):
+        line = lines[i]
+        if 'RESET' in line:
+            continue
+        matcher = re.match(r'\[\s*(\d+\.\d+)\](\d+)-FROM-(\d+)-TO-(\d+)', line)
+        waiters[int(matcher.group(2))] = [float(matcher.group(1)), int(matcher.group(3)), int(matcher.group(4))]
+    return waiters
 
 
-def initElevator():
-    reqDict.clear()
-    speeds.clear()
-    capacities.clear()
-    floors.clear()
-    states.clear()
-    passengers.clear()
-    receives.clear()
-    allPassengers.clear()
-    lastMoveTime.clear()
-    lastOpenTime.clear()
-    lastOpTime.clear()
-    lastResetTime.clear()
+# 将输出拆分为每个电梯的行为
+def analyze_output(output: str) -> list | str:
+    lines = output.split('\n')
+    actions = []
+    for i in range(len(lines)):
+        line = lines[i]
+        matcher = re.match(r'\[\s*(\d+\.\d+)\]([A-Z_]+).*', line)
+        try:
+            if matcher.group(2) in ['ARRIVE', 'OPEN', 'CLOSE', 'RECEIVE']:
+                matcher = re.match(r'\[\s*(\d+\.\d+)\]([A-Z_]+)-(\d+)-(\d+)', line)
+                actions.append(
+                    [float(matcher.group(1)), matcher.group(2), int(matcher.group(3)), int(matcher.group(4))])
+            elif matcher.group(2) in ['IN', 'OUT']:
+                matcher = re.match(r'\[\s*(\d+\.\d+)\]([A-Z_]+)-(\d+)-(\d+)-(\d+)', line)
+                actions.append([float(matcher.group(1)), matcher.group(2), int(matcher.group(3)), int(matcher.group(4)),
+                                int(matcher.group(5))])
+            elif matcher.group(2) == 'RESET_ACCEPT':
+                matcher = re.match(r'\[\s*(\d+\.\d+)\]([A-Z_]+)-(\d+)-(\d+)-(\d+\.\d+)', line)
+                actions.append([float(matcher.group(1)), matcher.group(2), int(matcher.group(3)), int(matcher.group(4)),
+                                float(matcher.group(5))])
+            elif matcher.group(2) in ['RESET_BEGIN', 'RESET_END']:
+                matcher = re.match(r'\[\s*(\d+\.\d+)\]([A-Z_]+)-(\d+)', line)
+                actions.append([float(matcher.group(1)), matcher.group(2), int(matcher.group(3))])
+            else:
+                return 'Error on line ' + str(i + 1) + '.'
+        except:
+            return 'Error on line ' + str(i + 1) + '.'
+    return actions
 
-    flag[0] = 0
-    for i in range(6):
-        floors.append(1)
-        states.append(STATE_CLOSE)
-        passengers.append([])
-        lastMoveTime.append(-10.0)
-        lastOpenTime.append(-10.0)
-        lastOpTime.append(0.0)
-        lastResetTime.append(0.0)
-        speeds.append(0.4)
-        capacities.append(6)
+def imitate(waiters, actions) -> str:
+    elevators = [elevator() for i in range(7)]
+    received_waiters = {}
+    tolerance = 0.02
 
+    for i in range(0, len(actions)):
+        action = actions[i]
+        match action[1]:
+            case 'RESET_ACCEPT':
+                if elevators[action[2]].reset != []:
+                    return False, 'RESET_ACCEPT before RESET_END', i + 1
+                elevators[action[2]].reset.append(action)
+                elevators[action[2]].reset_floor = 0
+            case 'RESET_BEGIN':
+                if elevators[action[2]].reset.__len__() != 1 or elevators[action[2]].reset[0][1] != 'RESET_ACCEPT':
+                    return False, 'Unauthorized Reset', i + 1
+                elif elevators[action[2]].passengers != {}:
+                    return False, 'RESET_BEGIN with passengers', i + 1
+                elif elevators[action[2]].last_closetime < elevators[action[2]].last_opentime:
+                    return False, 'RESET_BEGIN with door open', i + 1
+                elif elevators[action[2]].reset_floor > 2:  # 没有容错
+                    return False, 'RESET_BEGIN to RESET_END over 2 floors', i + 1
+                for p in elevators[action[2]].receiver:  # 取消分配
+                    waiters[p] = elevators[action[2]].receiver[p]
+                    received_waiters.pop(p)
+                elevators[action[2]].receiver.clear()
+                elevators[action[2]].reset.append(action)
+            case 'RESET_END':
+                if elevators[action[2]].reset.__len__()!=2 or not ('RESET_ACCEPT' in elevators[action[2]].reset[0] and 'RESET_BEGIN' in elevators[action[2]].reset[1]):
+                    return False, 'RESET_END without RESET_BEGIN', i + 1
+                elif action[0]-elevators[action[2]].reset[0][0]>5+tolerance:  #没有容错
+                    return False, 'RESET_ACCEPT to RESET_END over 5s', i + 1
+                elif action[0]-elevators[action[2]].reset[1][0]<1.2-tolerance:    #有容错
+                    return False, 'RESET_BEGIN to RESET_END under 1.2s', i + 1
+                elevators[action[2]].capacity=elevators[action[2]].reset[0][3]
+                elevators[action[2]].speed=elevators[action[2]].reset[0][4]
+                elevators[action[2]].reset=[]
+                elevators[action[2]].reset_floor=0
+            case 'RECEIVE':
+                # 同一乘客被分配到多个电梯、多次输出receive
+                if action[2] in received_waiters.keys():
+                    return False, 'Repeated Receive', i + 1
+                elif action[2] not in waiters.keys():
+                    return False, 'Receive without Passanger', i + 1
+                elif elevators[action[3]].reset.__len__() == 2:
+                    return False, 'Receive during Reset', i + 1
+                received_waiters[action[2]] = waiters[action[2]]
+                elevators[action[3]].receiver[action[2]] = waiters[action[2]]
+                waiters.pop(action[2])
+            case 'ARRIVE':
+                if action[2]>11 or action[2]<1:
+                    return False, 'Arrive out of range', i + 1
+                elif action[0]-elevators[action[3]].last_arrivetime<elevators[action[3]].speed-tolerance:
+                    return False, 'Move too fast', i + 1
+                elif elevators[action[3]].last_opentime>elevators[action[3]].last_closetime:
+                    return False, 'Move with door open', i + 1
+                elif elevators[action[3]].passengers==[] and elevators[action[3]].receiver=={}:
+                    return False, 'Move without Rceive', i + 1
+                elif elevators[action[3]].reset.__len__()==2:
+                    return False, 'Move during Reset', i + 1
+                elif abs(elevators[action[3]].floor-action[2])!=1:
+                    return False, 'Move over 1 floor', i + 1
+                elevators[action[3]].floor=action[2]
+                elevators[action[3]].last_arrivetime=action[0]
+                elevators[action[3]].reset_floor+=1
+            case 'OPEN':
+                if elevators[action[3]].reset.__len__() == 2:
+                    return False, 'Open during Reset', i + 1
+                elif elevators[action[3]].floor != action[2]:
+                    return False, 'Open Not on Arrived Floor', i + 1
+                elif elevators[action[3]].last_opentime > elevators[action[3]].last_closetime:
+                    return False, 'Open with door open', i + 1
+                elevators[action[3]].last_opentime = action[0]
+            case 'CLOSE':
+                if elevators[action[3]].reset.__len__() == 2:
+                    return False, 'Close during Reset', i + 1
+                elif elevators[action[3]].floor != action[2]:
+                    return False, 'Close Not on Arrived Floor', i + 1
+                elif elevators[action[3]].last_opentime < elevators[action[3]].last_closetime:
+                    return False, 'Close with door closed', i + 1
+                elif action[0] - elevators[action[3]].last_opentime < elevators[action[3]].open_time + elevators[action[3]].close_time - tolerance:
+                    return False, 'Close too fast', i + 1
+                elevators[action[3]].last_closetime = action[0]
+            case 'IN':
+                if elevators[action[4]].reset.__len__() == 2:
+                    return False, 'In during Reset', i + 1
+                elif elevators[action[4]].floor != action[3]:
+                    return False, 'In Not on Arrived Floor', i + 1
+                elif elevators[action[4]].last_opentime < elevators[action[4]].last_closetime:
+                    return False, 'In with door closed', i + 1
+                elif elevators[action[4]].passengers.__len__() + 1 > elevators[action[4]].capacity:
+                    return False, 'Overloaded', i + 1
+                elif action[2] not in elevators[action[4]].receiver.keys():
+                    return False, 'In without Receive', i + 1
+                elif received_waiters[action[2]][1] != action[3]:
+                    return False, 'In on wrong floor', i + 1
+                elevators[action[4]].passengers[action[2]] = received_waiters[action[2]]
+            case 'OUT':
+                if elevators[action[4]].reset.__len__() == 2:
+                    return False, 'Out during Reset', i + 1
+                elif elevators[action[4]].floor != action[3]:
+                    return False, 'Out Not on Arrived Floor', i + 1
+                elif elevators[action[4]].last_opentime < elevators[action[4]].last_closetime:
+                    return False, 'Out with door closed', i + 1
+                elif action[2] not in elevators[action[4]].passengers.keys():
+                    return False, 'Out without In', i + 1
+                if elevators[action[4]].passengers[action[2]][2] != action[3]:
+                    waiters[action[2]] = elevators[action[4]].passengers[action[2]]
+                    waiters[action[2]][1] = action[3]
+                elevators[action[4]].receiver.pop(action[2])
+                received_waiters.pop(action[2])
+                elevators[action[4]].passengers.pop(action[2])
+    for i in range(1, len(elevators)):
+        if elevators[i].reset != []:
+            return False, 'Thread End during Reset', -1
+        if elevators[i].passengers != {}:
+            return False, 'Thread End with passengers', -1
+        if elevators[i].last_opentime > elevators[i].last_closetime:
+            return False, 'Thread End with door open', -1
+    if waiters != {}:
+        return False, 'Passanger in Queue', -1
+    return True, '', -1
 
-def processInput(input_str):
-    tot = input_str.split('\n')
-    for ele in tot:
-        if (ele == ""):
-            break
-        req = Req(ele)
-        reqDict[req.getUserId()] = req
+class elevator:
+    def __init__(self):
+        self.capacity = 6
+        self.speed = 0.4
+        self.open_time= 0.2
+        self.close_time= 0.2
+        
+        self.last_opentime = 0
+        self.last_closetime = 1e-9
+        self.last_arrivetime = 0
+        self.floor = 1
+        self.passengers = {}
+        self.receiver = {}
 
+        self.reset = []
+        self.reset_floor = 0
 
-def process(read, lineNum):
-    read = read.replace('\n', '')
-    index = read.index(']')
-    opTime = float(read[1:index - 1])
-    read = read[index + 1:]
-    eles = read.split('-')
-
-    if (opTime < lastOpTime[0]):
-        return False, "INCORRECT OUTPUT ORDER!", lineNum
-
-    lastOpTime[0] = opTime
-
-    if eles[0] == 'ARRIVE':
-        index = int(eles[2]) - 1
-        if not 0 <= index <= 5:
-            return False, "UNKNOWN ELECATOR ID!", lineNum
-        if states[index] != STATE_CLOSE:
-            return False, "MOVE WHEN DOOR IS NOT CLOSE!", lineNum
-        if states[index] == STATE_RESET_BEGIN:
-            return False, "MOVE WHEN RESET BEGIN!", lineNum
-        if receives[index] == False:
-            return False, "NO RECEIVE BEFORE MOVE!", lineNum
-        # 小抖动误差
-        if opTime - lastMoveTime[index] < speeds[index] - float(config["fault_tolerance"]):
-            return False, "MOVE TOO FAST!", lineNum
-        lastMoveTime[index] = opTime
-        if int(eles[1]) > MAX_FLOOR or int(eles[1]) < MIN_FLOOR:
-            return False, "ELEVATOR ON A NON-EXISTENT FLOOR!", lineNum
-        if floors[index] - int(eles[1]) != 1 and floors[index] - int(eles[1]) != -1:
-            return False, "ELEVATOR MOVE TOO FAST!", lineNum
-        floors[index] = int(eles[1])
-
-    elif eles[0] == 'OPEN':
-        index = int(eles[2]) - 1
-        if not 0 <= index <= 5:
-            return False, "UNKNOWN ELEVATOR ID!", lineNum
-        if states[index] != STATE_CLOSE:
-            return False, "ELEVATOR ALREADY OPEN!", lineNum
-        if states[index] == STATE_RESET_BEGIN:
-            return False, "OPEN WHEN RESET BEGIN!", lineNum
-        states[index] = STATE_OPEN
-        lastOpTime[index] = opTime
-        if floors[index] != int(eles[1]):
-            return False, "ELEVATOR UNMATCHED FLOOR!", lineNum
-
-    elif eles[0] == 'CLOSE':
-        index = int(eles[2]) - 1
-        if not 0 <= index <= 5:
-            return False, "UNKNOWN ELEVATOR ID!", lineNum
-        if states[index] != STATE_OPEN:
-            return False, "ELEVATOR ALREADY CLOSE!", lineNum
-        if states[index] == STATE_RESET_BEGIN:
-            return False, "CLOSE WHEN RESET BEGIN!", lineNum
-        states[index] = STATE_CLOSE
-        lastOpTime[index] = opTime
-        if floors[index] != int(eles[1]):
-            return False, "ELEVATOR UNMATCHED FLOOR!", lineNum
-        if opTime - lastOpenTime[index] < 0.4 - 0.00001:
-            return False, "CLOSE TOO FAST!", lineNum
-
-    elif eles[0] == 'IN':
-        index = int(eles[3]) - 1
-        passenger_index = int(eles[1])
-        if not 0 <= index <= 5:
-            return False, "UNKNOWN ELEVATOR ID!", lineNum
-        if states[index] != STATE_OPEN:
-            return False, "PASSENGER IN WHEN DOOR IS NOT OPEN!", lineNum
-        if states[index] == STATE_RESET_BEGIN:
-            return False, "IN WHEN RESET BEGIN!", lineNum
-        allPassengers[passenger_index] = index
-        req = reqDict.get(passenger_index)
-        if req == None:
-            return False, "PASSENGER NOT EXIST!", lineNum
-        else:
-            if req.getFromFloor() != int(eles[2]):
-                return False, "IN MESSAGE NOT MATCH REQUEST!", lineNum
-            if len(passengers[index]) > capacities[index]:
-                return False, "ELEVATOR OVERLOAD!", lineNum
-            if floors[index] != int(eles[2]):
-                return False, "ELEVATOR UNMATCHED FLOOR!", lineNum
-
-    elif eles[0] == 'OUT':
-        index = int(eles[3]) - 1
-        passenger_index = int(eles[1])
-        if not 0 <= index <= 5:
-            return False, "UNKNOWN ELEVATOR ID!", lineNum
-        if states[index] != STATE_OPEN:
-            return False, "PASSENGER OUT WHEN DOOR IS NOT OPEN!", lineNum
-        if states[index] == STATE_RESET_BEGIN:
-            return False, "OUT WHEN RESET BEGIN!", lineNum
-        if passenger_index not in passengers[index]:
-            return False, "PASSENGER NOT IN ELEVATOR!", lineNum
-        else:
-            passengers[index].remove(passenger_index)
-            allPassengers.pop(passenger_index)
-        req = reqDict.get(passenger_index)
-        if req == None:
-            return False, "PASSENGER NOT EXIST!", lineNum
-        else:
-            req.setCurFloor(floors[index])
-            req.setReceive(False)
-            receives[index] = any(
-                map(lambda x: x == index, allPassengers.values()))
-
-    elif eles[0] == 'RECEIVE':
-        passenger_index = int(eles[1])
-        index = int(eles[2]) - 1
-        if not 0 <= index <= 5:
-            return False, "UNKNOWN ELEVATOR ID!", lineNum
-        if states[index] == STATE_RESET_BEGIN:
-            return False, "RECEIVE WHEN RESET BEGIN!", lineNum
-        req = reqDict.get(passenger_index)
-        if req == None:
-            return False, "PASSENGER NOT EXIST!", lineNum
-        else:
-            if req.getReceive() == True:
-                return False, "ONE RECEIVE MORE THAN ONCE", lineNum
-            allPassengers[passenger_index] = index
-            receives[index] = True
-            req.setReceive(True)
-
-    elif eles[0] == 'RESET_ACCEPT':
-        index = int(eles[1]) - 1
-        capacity = int(eles[2])
-        speed = float(eles[3])
-        if not 0 <= index <= 5:
-            return False, "UNKNOWN ELEVATOR ID!", lineNum
-        preSpeeds[index] = speed
-        preCapacities[index] = capacity
-
-    elif eles[0] == 'RESET_BEGIN':
-        index = int(eles[1]) - 1
-        if not 0 <= index <= 5:
-            return False, "UNKNOWN ELEVATOR ID!", lineNum
-        if states[index] != STATE_CLOSE:
-            return False, "RESET WHEN DOOR IS NOT CLOSE!", lineNum
-        if preSpeeds[index] == -1 or preCapacities[index] == -1:
-            return False, "RESET WITHOUT ACCEPT!", lineNum
-        states[index] = STATE_RESET_BEGIN
-        speeds[index] = preSpeeds[index]
-        capacities[index] = preCapacities[index]
-        lastResetTime[index] = opTime
-        preCapacities[index] = -1
-        preSpeeds[index] = -1
-
-    elif eles[0] == 'RESET_END':
-        index = int(eles[1]) - 1
-        if not 0 <= index <= 5:
-            return False, "UNKNOWN ELEVATOR ID!", lineNum
-        if states[index] != STATE_RESET_BEGIN:
-            return False, "RESET END WITHOUT BEGIN", lineNum
-        if opTime - lastResetTime[index] < 1.2 - 0.00001:
-        states[index] = STATE_CLOSE
-
+def trim(s):
+    if s[:1] != ' ' and s[-1:] != ' ' and s[:1] != '\n' and s[-1:] != '\n':
+        return s
+    elif s[:1] == ' ' or s[:1] == '\n':
+        return trim(s[1:])
     else:
-        return False, "UNKNOWN OPTIONS!", lineNum
-
-    return True, "Accepted", lineNum
+        return trim(s[:-1])

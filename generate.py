@@ -52,7 +52,7 @@ def generate_person(time):
     while to_floor == from_floor:
         to_floor = str(get_floor())
     elevator_id = str(get_elevator())
-    return '[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '-BY-' + elevator_id + '\n'
+    return '[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '\n'
 
 
 def generate_reset(time):
@@ -78,7 +78,6 @@ def generate_input():
             string += generate_person(time)
         else:
             string += generate_reset(time)
-    print(string)
     return string, realNum
 
 if __name__ =="__main__":

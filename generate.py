@@ -14,7 +14,7 @@ id_dirt = {}
 reset_capacity_pool = [3, 4, 5, 6, 7, 8]
 reset_speed_pool = [0.2, 0.3, 0.4, 0.5, 0.6]
 
-last_reset_time = 1.0
+last_reset_time = {}
 
 
 def get_id():
@@ -57,11 +57,10 @@ def generate_person(time):
     return '[' + str(format(time, '.1f')) + ']' + id + '-FROM-' + from_floor + '-TO-' + to_floor + '\n'
 
 
-def generate_reset(time):
-    elevator = str(get_elevator())
+def generate_reset(time, ele):
     capacity = str(random.choice(reset_capacity_pool))
     speed = str(random.choice(reset_speed_pool))
-    return '[' + str(format(time, '.1f')) + ']' + 'RESET-Elevator-' + elevator + '-' + capacity + '-' + speed + '\n'
+    return '[' + str(format(time, '.1f')) + ']' + 'RESET-Elevator-' + str(ele) + '-' + capacity + '-' + speed + '\n'
 
 
 def generate_input():
@@ -70,6 +69,10 @@ def generate_input():
     string = ""
     maxNum = random.randint(1, int(config["command_limit"]))
     time = 1.0
+    # init
+    for i in range(1, 7):
+        last_reset_time[i] = 1.0
+
     for _ in range(maxNum):
         time += get_time_gap()
         if (time > float(config["time_limit"])):
@@ -77,12 +80,14 @@ def generate_input():
 
         realNum = realNum + 1
         chance = random.randint(0, MAX_INT) % 100
-        if chance < 60:
+        if chance < 40:
             string += generate_person(time)
         else:
-            if time - last_reset_time > 3:
-                last_reset_time = time
-                string += generate_reset(time)
+            ele = get_elevator()
+            if time - last_reset_time[ele] > 3.0:
+                string += generate_reset(time, ele)
+                last_reset_time[ele] = time
+
             else:
                 string += generate_person(time)
     return string, realNum

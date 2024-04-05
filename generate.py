@@ -14,11 +14,13 @@ id_dirt = {}
 reset_capacity_pool = [3, 4, 5, 6, 7, 8]
 reset_speed_pool = [0.2, 0.3, 0.4, 0.5, 0.6]
 
+last_reset_time = 1.0
+
 
 def get_id():
-    id = random.randint(1, MAX_INT)
+    id = random.randint(1, MAX_INT) % 100 + 1
     while id_dirt.get(id) == True:
-        id = random.randint(1, MAX_INT)
+        id = random.randint(1, MAX_INT) % 100 + 1
     id_dirt[id] = True
     return id
 
@@ -63,6 +65,7 @@ def generate_reset(time):
 
 
 def generate_input():
+    global last_reset_time
     realNum = 0
     string = ""
     maxNum = random.randint(1, int(config["command_limit"]))
@@ -74,11 +77,16 @@ def generate_input():
 
         realNum = realNum + 1
         chance = random.randint(0, MAX_INT) % 100
-        if chance < 80:
+        if chance < 60:
             string += generate_person(time)
         else:
-            string += generate_reset(time)
+            if time - last_reset_time > 3:
+                last_reset_time = time
+                string += generate_reset(time)
+            else:
+                string += generate_person(time)
     return string, realNum
 
-if __name__ =="__main__":
-    generate_input()
+
+if __name__ == "__main__":
+    print(generate_input()[0])

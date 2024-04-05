@@ -84,7 +84,7 @@ def generate_input():
             string += generate_person(time)
         else:
             ele = get_elevator()
-            if time - last_reset_time[ele] > 3.0:
+            if time - last_reset_time[ele] > 6.5:
                 string += generate_reset(time, ele)
                 last_reset_time[ele] = time
 

@@ -39,6 +39,10 @@ def judge(passangers, actions):
             return False, 'Elevator' + str(elevator.id) + ' End With Door open', str(str(elevator.id))
         elif elevator.waiting_passangers:
             return False, 'Elevator' + str(elevator.id) + ' End With Waiting Passanger', str(elevator.id)
+        elif elevator.reset_begin == True:
+            return False, 'Elevator' + str(elevator.id) + ' End With Reset Begin', str(elevator.id)
+        elif elevator.reset_scheduled == True:
+            return False, 'Elevator' + str(elevator.id) + ' End With Reset Scheduled', str(elevator.id)
 
     for passanger in passangers.values():
         if passanger.at_floor != passanger.to_floor:
@@ -159,7 +163,6 @@ def _judge_reset_begin(elevator, action, passangers):
     elevator.reset_scheduled = False
     elevator.last_action_time = action.time
     return True, ''
-
 
 def _judge_reset_end(elevator, action):
     if elevator.reset_begin == False:

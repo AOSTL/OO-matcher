@@ -1,4 +1,4 @@
-from run.object import ELEVATOR
+from run.object import ELEVATOR, PASSANGER
 import json
 
 config = json.load(open('config.json','r',encoding='utf-8'))
@@ -29,7 +29,6 @@ def judge(passangers, actions):
                 res = _judge_reset_begin(elevator, action)
             case 'RESET_END':
                 res = _judge_reset_end(elevator, action)
-
         if res[0] == False:
             return res[0], res[1], 'Line ' + str(i) + ': [' + str(action.time) + ']'
     
@@ -123,6 +122,7 @@ def _judge_out(elevator, action, passangers):
     elif action.passanger not in elevator.passangers:
         return False, 'Elevator' + str(elevator.id) + ' Out Passanger Not In Elevator'
     passangers[action.passanger].at_floor = elevator.current_floor
+    passangers[action.passanger].received = False
     elevator.remove_passanger(action.passanger)
     return True, ''
 

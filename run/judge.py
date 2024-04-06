@@ -26,7 +26,7 @@ def judge(passangers, actions):
             case 'RESET_ACCEPT':
                 res = _judge_reset_accept(elevator, action)
             case 'RESET_BEGIN':
-                res = _judge_reset_begin(elevator, action)
+                res = _judge_reset_begin(elevator, action, passangers)
             case 'RESET_END':
                 res = _judge_reset_end(elevator, action)
         if res[0] == False:
@@ -38,7 +38,7 @@ def judge(passangers, actions):
         elif elevator.door_status != False:
             return False, 'Elevator' + str(elevator.id) + ' End With Door open', str(str(elevator.id))
         elif elevator.waiting_passangers:
-            return False, 'Elevator' + str(elevator.id) + ' End With Waiting Passanger', str(str(elevator.id))
+            return False, 'Elevator' + str(elevator.id) + ' End With Waiting Passanger', str(elevator.id)
 
     for passanger in passangers.values():
         if passanger.at_floor != passanger.to_floor:
@@ -145,7 +145,7 @@ def _judge_reset_accept(elevator, action):
     elevator.reset_arrive_count = 0
     return True, ''
 
-def _judge_reset_begin(elevator, action):
+def _judge_reset_begin(elevator, action, passangers):
     if elevator.door_status == True:
         return False, 'Elevator' + str(elevator.id) + ' Begin Reset While Door Open'
     elif elevator.passangers.__len__() > 0:
@@ -155,7 +155,7 @@ def _judge_reset_begin(elevator, action):
     elif elevator.reset_arrive_count > 2:
         return False, 'Elevator' + str(elevator.id) + ' Begin Reset After Arriving 2+ Floors'
     for passanger in elevator.waiting_passangers:
-        passanger.received = False
+        passangers[passanger].received = False
     elevator.waiting_passangers = []
     elevator.reset_begin = True
     elevator.reset_scheduled = False

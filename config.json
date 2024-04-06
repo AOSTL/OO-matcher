@@ -1,6 +1,6 @@
 {
-    "time_limit":30,
-    "command_limit":20,
+    "time_limit":40,
+    "command_limit":50,
     "fault_tolerance":0.02,
     
     "elevator_num":6,

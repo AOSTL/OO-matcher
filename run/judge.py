@@ -70,8 +70,6 @@ def _judge_open(elevator, action):
         return False, 'Elevator' + str(elevator.id) + ' Open Door While Door Already Open'
     elif elevator.current_floor != action.floor:
         return False, 'Elevator' + str(elevator.id) + ' Open Door At Wrong Floor'
-    elif elevator.waiting_passangers.__len__() == 0 and elevator.passangers.__len__() == 0:
-        return False, 'Elevator' + str(elevator.id) + ' Open Door With No Passanger In Elevator or Waiting'
     elif elevator.reset_begin == True:
         return False, 'Elevator' + str(elevator.id) + ' Open Door During Reset'
     elevator.door_status = True

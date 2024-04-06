@@ -131,7 +131,7 @@ def _judge_out(elevator, action, passangers):
 def _judge_receive(elevator, action, passangers):
     if elevator.reset_begin == True:
         return False, 'Elevator' + str(elevator.id) + ' Receive Passanger During Reset'
-    elif passangers[action.passanger] == None:
+    elif action.passanger not in passangers.keys():
         return False, 'Elevator' + str(elevator.id) + ' Receive Non-Existent Passanger'
     elif passangers[action.passanger].received == True:
         return False, 'Elevator' + str(elevator.id) + ' Receive Passanger Already Received'

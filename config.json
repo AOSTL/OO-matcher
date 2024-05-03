@@ -1,14 +1,6 @@
 {
-    "time_limit":40,
-    "command_limit":50,
-    "fault_tolerance":0.02,
-    
-    "elevator_num":6,
-    "default_floor":1,
-    "min_floor":1,
-    "max_floor":11,
-    "move_time":0.4,
-    "open_time":0.2,
-    "close_time":0.2,
-    "max_capacity":6
+    "test_num": 10000,
+    "run_time_limit": 10,
+    "command_num_max": 3000,
+    "error_folder_name": "errors"
 }
